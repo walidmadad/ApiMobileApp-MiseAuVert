@@ -1,11 +1,11 @@
 <?php
-
 require_once 'database.php';
 
-if (!empty($_POST['id_animal']) && !empty($_POST['nom_animal']) && !empty($_POST['poids']) && !empty($_POST['age']) && !empty($_POST['espece']) && !empty($_POST['regle']) && !empty($_POST['carnet']) && !empty($_POST['vaccin']) && !empty($_POST['vermifuge']) && !empty($_POST['dateFin']) && !empty($_POST['pension']) && !empty($_POST['typeGardiennage'])) {
-
-    // Récupérez les données du formulaire
+if (
+    isset($_POST['id_animal'], $_POST['id_proprietaire'], $_POST['nom_animal'], $_POST['poids'], $_POST['age'], $_POST['espece'], $_POST['regle'], $_POST['carnet'], $_POST['vaccin'], $_POST['vermifuge'], $_POST['dateFin'], $_POST['pension'], $_POST['typeGardiennage'])
+) {
     $id_animal = $_POST['id_animal'];
+    $id_proprietaire = $_POST['id_proprietaire'];
     $nom_animal = $_POST['nom_animal'];
     $espece = $_POST['espece'];
     $age = $_POST['age'];
@@ -15,19 +15,16 @@ if (!empty($_POST['id_animal']) && !empty($_POST['nom_animal']) && !empty($_POST
     $vaccin = $_POST['vaccin'];
     $vermifuge = $_POST['vermifuge'];
     $dateFin = $_POST['dateFin'];
-    $id_type_gardiennage = "";
     $pension = $_POST['pension'];
-    $typeGardiennage = $_POST['typeGardiennage'];
+    $typeGardiennage= $_POST['typeGardiennage'];
     $id_pension = "";
     $id_box = "";
     $id_espece ="";
 
-    // Connectez-vous à la base de données
     $conn = connectToDatabase();
 
     if ($conn) {
-        // Récupérez l'identifiant de la pension et du type de gardiennage à partir des noms fournis
-        // Cela suppose que les tables contenant ces informations ont des champs nommés "nom_pension" et "libelle" respectivement
+
         $sql1 = "SELECT id_pension FROM pension WHERE nom_pension = ?";
         $stmt1 = mysqli_prepare($conn, $sql1);
         mysqli_stmt_bind_param($stmt1, "s", $pension);
@@ -36,7 +33,7 @@ if (!empty($_POST['id_animal']) && !empty($_POST['nom_animal']) && !empty($_POST
         mysqli_stmt_fetch($stmt1);
         mysqli_stmt_close($stmt1);
 
-        $sql2 = "SELECT id_TypeGardiennage FROM TypeGardiennage WHERE libelle = ?";
+        $sql2 = "SELECT id_TypeGardiennage FROM typegardiennage WHERE Libelle = ?";
         $stmt2 = mysqli_prepare($conn, $sql2);
         mysqli_stmt_bind_param($stmt2, "s", $typeGardiennage);
         mysqli_stmt_execute($stmt2);
@@ -52,15 +49,35 @@ if (!empty($_POST['id_animal']) && !empty($_POST['nom_animal']) && !empty($_POST
         mysqli_stmt_fetch($stmt3);
         mysqli_stmt_close($stmt3);
 
-        $sqlstmt1 = $conn->prepare("UPDATE animal SET nom_animal=?, id_espece=? WHERE id_animal=?");
-        $sqlstmt1->bind_param("ssi", $nom_animal, $id_espece, $id_animal);
+        $sql = "SELECT * FROM box WHERE id_TypeGardiennage = $id_type_gardiennage AND id_pension = $id_pension";
+        $stmt = mysqli_prepare($conn, $sql);
+        if (!$stmt) {
+            echo "Erreur de préparation de la requête : " . mysqli_error($conn);
+            exit();
+        }
+        if (mysqli_stmt_execute($stmt)) {
+            $result = mysqli_stmt_get_result($stmt);
+            if (mysqli_num_rows($result) != 0) {
+                $row = mysqli_fetch_assoc($result);
+                $id_box = $row['id_box'];
+            } else {
+                echo -1;
+                exit();
+            }
+        } else {
+            echo "Error: " . $stmt->error;
+            exit();
+        }
+
+        $sqlstmt1 = $conn->prepare("UPDATE animal SET nom_animal=?, id_espece=?, id_proprietaire=? WHERE id_animal=?");
+        $sqlstmt1->bind_param("sssi", $nom_animal, $id_espece, $id_proprietaire, $id_animal);
         if ($sqlstmt1->execute()) {
-            $sqlstmt3 = $conn->prepare("UPDATE affectation SET Poids=?, Age=?, Regle=?, Carnet_Vaccination=?, Vaccin_a_jour=?, Vermifuge_a_jour=?, Date_fin=? WHERE animal_id=?");
-            $sqlstmt3->bind_param("sssssssi", $poids, $age, $regle, $carnet, $vaccin, $vermifuge, $dateFin, $id_animal);
-            if ($sqlstmt3->execute()) {
+            $sqlstmt2 = $conn->prepare("UPDATE affectation SET Poids=?, Age=?, Regle=?, Carnet_Vaccination=?, Vaccin_a_jour=?, Vermifuge_a_jour=?, Date_fin=?, box_id=? WHERE animal_id=?");
+            $sqlstmt2->bind_param("ssssssssi", $poids, $age, $regle, $carnet, $vaccin, $vermifuge, $dateFin, $id_box, $id_animal);
+            if ($sqlstmt2->execute()) {
                 echo "Animal mis à jour avec succès";
             } else {
-                echo "Échec de la mise à jour des informations d'affectation de l'animal : " . $sqlstmt3->error;
+                echo "Échec de la mise à jour des informations de l'animal : " . $sqlstmt2->error;
             }
         } else {
             echo "Échec de la mise à jour des informations de l'animal : " . $sqlstmt1->error;
