@@ -37,6 +37,7 @@ if(!empty($_POST['id_proprietaire'])){
             $regle= $animal->getRegle($id_animal);
             $dateFin = $animal->getDateFin($id_animal);
 
+            
             $affichage[] = array(
                 "status" => "success",
                 "message" => "Data Affichage successfully", "id_Animal" => $row['id_Animal'],
