@@ -8,7 +8,6 @@ if(!empty($_POST['id_proprietaire']) && !empty($_POST['nom_animal'])){
 
 
     $animal = new animal();
-
     $id_animal = $animal->getIdAnimal($id_proprietaire, $nom_animal);
     $id_box = $animal->getIdBox($id_animal);
     $id_pension = $animal->getIdPension($id_box);
